@@ -5,7 +5,7 @@
     <button onclick="envoyer()">Envoyer Score Test</button>
     <script>
       function envoyer() {
-        fetch("https://script.google.com/macros/s/TON_NOUVEAU_LIEN/exec", {
+        fetch("https://script.google.com/macros/s/AKfycbyeyczASMobQzPQejfX-Cmwm7LrT-LZnfDRc8O2TIl_rz3wNwLDURiMwzp0xRORWJFNAg/exec", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ pseudo: "TestUser", temps: 42.3 })
