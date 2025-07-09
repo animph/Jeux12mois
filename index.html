@@ -115,11 +115,16 @@
 
       const pseudo = prompt("Entrez votre Prénom pour le classement :");
       if (pseudo) {
-        fetch(scriptUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ pseudo: pseudo, temps: total.toFixed(2) })
-        }).then(loadLeaderboard);
+fetch(scriptUrl, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ pseudo: pseudo, temps: total.toFixed(2) })
+})
+.then(r => r.text())
+.then(t => {
+  console.log("Réponse Google Script :", t);
+  loadLeaderboard();
+});
       }
     }
 
