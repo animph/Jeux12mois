@@ -28,7 +28,9 @@
   <div id="leaderboard"><h2>🏆 Classement</h2><ul id="scores"></ul></div>
 
   <script>
-    const mots = ["Clef", "Télécommande", "Couteau", "Portefeuille", "Ceinture", "Bouteille d'eau", "Corde bizarre", "Marié H", "Mariée F", "Lunettes", "Masque 1", "Savon", "L Coton", "Brosse", "Tasse", "Pièce", "Stylo", "Bague moche", "Mouchoir bleu", "Chaussure homme", "Cravate verte", "Rouge à lèvre", "Montre", "Crayon piège", "Masque 2", "Bretelles", "Nain", "Lampe de poche bleue", "Clé USB", "Sandale", "Briquet", "Boite bague", "Billet ", "Nœud papillon", "Carte d'identité", "Allumette", "Mouchoir orange", "Ange", "chaussure femme"];
+    const mots = ["Clef", "Télécommande", "Couteau", "Portefeuille", "Ceinture", "Bouteille", "Corde bizarre", "Marié H", "Mariée F", "Lunettes", "Masque 1", "Savon", "L Coton", "Brosse", "Tasse", "Pièce", "Stylo", "Bague moche", 
+		  "Mouchoir bleu", "Chaussure homme", "Cravate verte", "Rouge à lèvre", "Montre", "Crayon piège", "Masque 2", "Bretelles", "Nain", "Lampe de poche bleue", "Clé USB", "Sandale", "Briquet", "Boite bague", "Billet ", 
+		  "Nœud papillon", "Carte d'identité", "Allumette", "Mouchoir orange", "Ange", "chaussure femme"];
     const zones = [
 { nom: "Clef", x: 3.2, y: 3.2, w: 19, h: 14.8, intrus: false },
 { nom: "Télécommande", x: 20.6, y: 2.2, w: 38.1, h: 14.8, intrus: true },
@@ -71,7 +73,7 @@
 { nom: "chaussure femme", x: 46.7, y: 88.4, w: 60.1, h: 96.5, intrus: true }
     ];
 
-    const scriptUrl = "https://script.google.com/macros/s/AKfycbyDC7VLU8138UqWN-10qdQq6uURRh_D-mbf8zCw7D7dlk7jCoQqFVsv0CxelqML8xLf/exec";
+    const scriptUrl = "https://script.google.com/macros/s/AKfycbysGzFBgVvONJsA_U2LvXsT4YPx8pp6Vugn0Zw8QlgeQTGD05Vr5ZCTcH01biYQP06h/exec";
 
     const container = document.getElementById("game-container");
     const wordDisplay = document.getElementById("word");
