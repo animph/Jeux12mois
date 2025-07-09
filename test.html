@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+  <head><title>Test POST Google Sheets</title></head>
+  <body>
+    <button onclick="envoyer()">Envoyer Score Test</button>
+    <script>
+      function envoyer() {
+        fetch("https://script.google.com/macros/s/TON_NOUVEAU_LIEN/exec", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pseudo: "TestUser", temps: 42.3 })
+        })
+        .then(r => r.text())
+        .then(t => alert("Réponse : " + t))
+        .catch(e => alert("Erreur : " + e));
+      }
+    </script>
+  </body>
+</html>
