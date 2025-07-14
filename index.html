@@ -3,180 +3,159 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Jeu de Recherche Visuelle - Mariage</title>
-  <style>
-    body { font-family: sans-serif; text-align: center; background-color: #fef8f4; }
-    #game-container { position: relative; display: inline-block; }
-    #wedding-image { max-width: 100%; height: auto; }
-    .target { position: absolute; border: 2px solid transparent; cursor: pointer; }
-    .found { border-color: green; }
-    #current-word { font-size: 1.5em; margin: 10px; }
-    #results, #leaderboard { margin-top: 20px; }
-  </style>
+  <title>Jeu du Mariage</title>
+  <link rel="stylesheet" href="styles.css" /> <!-- Si tu as un CSS, garde-le -->
 </head>
 <body>
-  <h1>🎯 Jeu de Recherche - Spécial Mariage</h1>
-  <div id="current-word">
-  Cliquez sur : <strong id="word"></strong><br>
-  ⏱️ Temps : <span id="timer">0.0</span> sec
-</div>
-
-  <div id="game-container">
-    <img id="wedding-image" src="scene.png" alt="Scène de mariage" />
+  <div id="jeu">
+    <h1>Jeu du Mariage</h1>
+    <div id="grille"></div>
+    <button id="nouvelle-partie">Nouvelle Partie</button>
+    <p id="temps">Temps : 0s</p>
+    <div id="modal" class="modal">
+      <div class="modal-content">
+        <h2>Félicitations !</h2>
+        <p>Vous avez terminé en <span id="temps-final"></span> secondes !</p>
+        <input type="text" id="pseudo" placeholder="Entrez votre pseudo" />
+        <button id="enregistrer">Enregistrer le score</button>
+      </div>
+    </div>
+    <div id="classement">
+      <!-- Le classement sera chargé ici -->
+    </div>
   </div>
-  <div id="results"></div>
-  <div id="leaderboard"><h2>🏆 Classement</h2><ul id="scores"></ul></div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js"></script>
 
   <script>
-    const mots = ["chaussure femme",
-"Bretelles",
-"Carte d'identité",
-"Ceinture",
-"Clef",
-"Marié H",
-"Brosse",		  
-"Mariée F",
-"Mouchoir orange",
-"Nœud papillon",
-"Portefeuille",
-"Rouge à lèvre",
-"Tasse"
-];
-    const zones = [
-{ nom: "Clef", x: 3.2, y: 3.2, w: 19, h: 14.8, intrus: false },
-{ nom: "Télécommande", x: 20.6, y: 2.2, w: 38.1, h: 14.8, intrus: true },
-{ nom: "Couteau", x: 38.4, y: 3.2, w: 55.3, h: 13.7, intrus: true },
-{ nom: "Portefeuille", x: 55.5, y: 3.2, w: 77.5, h: 13.7, intrus: false },
-{ nom: "Ceinture", x: 4.8, y: 27.4, w: 23.7, h: 33.7, intrus: false },
-{ nom: "Bouteille d'eau", x: 26.9, y: 30.5, w: 36.4, h: 46.3, intrus: true },
-{ nom: "Corde bizarre", x: 23.7, y: 19, w: 45.9, h: 28.4, intrus: true },
-{ nom: "Marié H", x: 47.4, y: 14.8, w: 59.1, h: 48.4, intrus: false },
-{ nom: "Mariée F", x: 59.3, y: 15.8, w: 75.9, h: 48.4, intrus: false },
-{ nom: "Lunettes", x: 75.9, y: 13.7, w: 96.4, h: 19, intrus: true },
-{ nom: "Masque 1", x: 75.9, y: 20, w: 96.4, h: 13.7, intrus: true },
-{ nom: "Savon", x: 77.5, y: 27.4, w: 86.1, h: 40, intrus: true },
-{ nom: "L Coton", x: 86.9, y: 28.4, w: 96.4, h: 35.8, intrus: true },
-{ nom: "Brosse", x: 87.1, y: 36.9, w: 95.6, h: 52.6, intrus: false },
-{ nom: "Tasse", x: 6.4, y: 47.4, w: 19, h: 54.7, intrus: false },
-{ nom: "Pièce", x: 23.7, y: 47.4, w: 31.6, h: 51.6, intrus: true },
-{ nom: "Stylo", x: 31.8, y: 46.3, w: 44, h: 53.7, intrus: true },
-{ nom: "Bague moche", x: 44.1, y: 49.5, w: 52.2, h: 53.2, intrus: true },
-{ nom: "Mouchoir bleu", x: 3.8, y: 58.1, w: 11.6, h: 61.8, intrus: true },
-{ nom: "Chaussure homme", x: 12.5, y: 56.8, w: 30.1, h: 66.3, intrus: true },
-{ nom: "Cravate verte", x: 33.2, y: 54.4, w: 41.1, h: 70.5, intrus: true },
-{ nom: "Rouge à lèvre", x: 43.7, y: 55.8, w: 48.2, h: 66.3, intrus: false },
-{ nom: "Montre", x: 52.3, y: 50.5, w: 63.2, h: 63.7, intrus: true },
-{ nom: "Crayon piège", x: 67.5, y: 53.7, w: 84.3, h: 58.8, intrus: true },
-{ nom: "Masque 2", x: 5.4, y: 68.4, w: 23.9, h: 76.9, intrus: true },
-{ nom: "Bretelles", x: 42.4, y: 66.4, w: 59.1, h: 76.9, intrus: false },
-{ nom: "Nain", x: 63.4, y: 58.9, w: 74.3, h: 74.4, intrus: true },
-{ nom: "Lampe de poche bleue", x: 75.6, y: 61.1, w: 86.8, h: 70.5, intrus: true },
-{ nom: "Clé USB", x: 88.5, y: 62, w: 95.2, h: 69.3, intrus: true },
-{ nom: "Sandale", x: 4.8, y: 84.2, w: 25.3, h: 95.7, intrus: true },
-{ nom: "Briquet", x: 28.3, y: 85, w: 33.5, h: 94.8, intrus: true },
-{ nom: "Boite bague", x: 36.9, y: 87, w: 46.5, h: 92.5, intrus: true },
-{ nom: "Billet ", x: 42.5, y: 78.7, w: 58.5, h: 86.4, intrus: true },
-{ nom: "Nœud papillon", x: 59.8, y: 75.5, w: 73.4, h: 80.8, intrus: false },
-{ nom: "Carte d'identité", x: 77, y: 71.4, w: 87.6, h: 77.9, intrus: false },
-{ nom: "Allumette", x: 87.7, y: 75.5, w: 94.8, h: 81.3, intrus: true },
-{ nom: "Mouchoir orange", x: 61.8, y: 82.2, w: 72.4, h: 87.5, intrus: false },
-{ nom: "Ange", x: 73.8, y: 84.1, w: 82.2, h: 94.8, intrus: true },
-{ nom: "chaussure femme", x: 46.7, y: 88.4, w: 55, h: 92, intrus: false }
-    ];
-
-    const scriptUrl = "https://script.google.com/macros/s/AKfycbzczqkbLGHTGOK0mje7pay1tIoq_fNnua4N9YZ8aUvWphzJSA6jKzdjEEjVNk1nbLAH9Q/exec";
-
-    const container = document.getElementById("game-container");
-    const wordDisplay = document.getElementById("word");
-    const results = document.getElementById("results");
-    const scoresList = document.getElementById("scores");
-	let index = 0, startTime = 0, totalPenalty = 0, times = [];
-    let intervalId = null;
-	const timerDisplay = document.getElementById("timer");
+    // Configuration Firebase (remplace par TES valeurs depuis console.firebase.google.com > Paramètres du projet)
+const firebaseConfig = {
+  apiKey: "AIzaSyAAIr_vGlCMM9iuRwnqOQhb2cwv7DIVJFk",
+  authDomain: "classementjeu-a2f8a.firebaseapp.com",
+  projectId: "classementjeu-a2f8a",
+  storageBucket: "classementjeu-a2f8a.firebasestorage.app",
+  messagingSenderId: "70538879353",
+  appId: "1:70538879353:web:05b35cb2c3930c34380fa8",
+  measurementId: "G-JXNCRWDN5C"
+};
 
 
-    function showWord() {
-  wordDisplay.textContent = mots[index];
-  startTime = Date.now();
-  if (intervalId) clearInterval(intervalId);
-  intervalId = setInterval(() => {
-    const t = (Date.now() - startTime) / 1000;
-    timerDisplay.textContent = t.toFixed(1);
-  }, 100);
-}
 
-    function endGame() {
-      const total = times.reduce((a, b) => a + b, 0) + totalPenalty;
-      results.innerHTML = `<h2>Résultat :</h2>`;
-      mots.forEach((m, i) => {
-        results.innerHTML += `<p>${m} : ${times[i].toFixed(2)} sec</p>`;
-      });
-      if (totalPenalty > 0) results.innerHTML += `<p>Pénalité : +${totalPenalty} sec</p>`;
-      results.innerHTML += `<h3>Temps total : ${total.toFixed(2)} sec</h3>`;
+    // Initialiser Firebase
+    const app = firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore(app);
 
-      const pseudo = prompt("Entrez votre Prénom pour le classement :");
-      if (pseudo) {
-fetch(scriptUrl, {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ pseudo: pseudo, temps: total.toFixed(2) })
-})
-.then(r => r.text())
-.then(t => {
-  console.log("Réponse Google Script :", t);
-  loadLeaderboard();
-});
+    // Variables pour le timer (mesure automatique du temps)
+    let startTime = null;
+    let timerInterval = null;
+
+    // Fonction pour démarrer le timer
+    function startTimer() {
+      startTime = Date.now();
+      timerInterval = setInterval(updateTimerDisplay, 1000);  // Met à jour l'affichage toutes les secondes
+    }
+
+    // Fonction pour mettre à jour l'affichage du temps (en secondes)
+    function updateTimerDisplay() {
+      if (startTime) {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        document.getElementById("temps").textContent = `Temps : ${elapsed}s`;
       }
     }
 
-    function setupZones() {
-      zones.forEach(zone => {
-        const div = document.createElement("div");
-        div.classList.add("target");
-        div.style.left = zone.x + "%";
-        div.style.top = zone.y + "%";
-        div.style.width = zone.w + "%";
-        div.style.height = zone.h + "%";
-        div.dataset.nom = zone.nom;
-        div.dataset.intrus = zone.intrus;
-        div.onclick = () => handleClick(zone);
-        container.appendChild(div);
-      });
+    // Fonction pour arrêter le timer et retourner le temps final en secondes
+    function stopTimer() {
+      clearInterval(timerInterval);
+      if (startTime) {
+        return ((Date.now() - startTime) / 1000).toFixed(1);  // Temps en secondes avec 1 décimale
+      }
+      return 0;
     }
 
-    function handleClick(zone) {
-      if (zone.intrus) {
-        totalPenalty += 1;
-        alert(`Intrus cliqué : ${zone.nom} (+1s)`);
+    // Fonction pour enregistrer un score dans Firestore
+    function enregistrerScore(pseudo, temps) {
+      if (!pseudo || !temps) {
+        alert("Veuillez entrer un pseudo.");
         return;
       }
-      if (zone.nom === mots[index]) {
-        const timeTaken = (Date.now() - startTime) / 1000;
-        times.push(timeTaken);
-        index++;
-        if (index < mots.length) showWord();
-        else {
-          wordDisplay.textContent = "✔️ Terminé !";
-          endGame();
-        }
-      }
+
+      db.collection("scores").add({
+        pseudo: pseudo,
+        temps: parseFloat(temps),  // Assure-toi que c'est un nombre
+        date: firebase.firestore.FieldValue.serverTimestamp()  // Date automatique du serveur
+      })
+      .then(() => {
+        console.log("Score enregistré avec succès !");
+        // Pas besoin de recharger manuellement le classement (onSnapshot s'en occupe)
+        document.getElementById("modal").style.display = "none";  // Ferme le modal
+      })
+      .catch((error) => {
+        console.error("Erreur d'enregistrement du score :", error);
+        alert("Erreur lors de l'enregistrement du score.");
+      });
     }
 
-    function loadLeaderboard() {
-      fetch(scriptUrl)
-        .then(r => r.json())
-        .then(data => {
-          scoresList.innerHTML = "";
-          data.forEach(entry => {
-            scoresList.innerHTML += `<li><strong>${entry.pseudo}</strong> : ${entry.temps} s</li>`;
+    // Fonction pour charger et afficher le classement en TEMPS RÉEL (avec onSnapshot)
+    function chargerClassement() {
+      db.collection("scores")
+        .orderBy("temps", "asc")  // Tri par temps croissant (meilleurs en premier)
+        .limit(10)  // Limite au top 10
+        .onSnapshot((querySnapshot) => {  // Écoute les changements en temps réel
+          const classement = [];
+          querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            classement.push({
+              pseudo: data.pseudo,
+              temps: data.temps,
+              date: data.date ? data.date.toDate().toLocaleString('fr-FR') : 'Inconnu'  // Format date française
+            });
           });
+
+          // Affiche dans le HTML
+          const classementDiv = document.getElementById("classement");
+          classementDiv.innerHTML = "<h2>Classement des Meilleurs Temps</h2><ol>";
+          if (classement.length === 0) {
+            classementDiv.innerHTML += "<li>Aucun score pour le moment.</li>";
+          } else {
+            classement.forEach((score) => {
+              classementDiv.innerHTML += `<li>${score.pseudo} - ${score.temps} secondes (${score.date})</li>`;
+            });
+          }
+          classementDiv.innerHTML += "</ol>";
+        }, (error) => {
+          console.error("Erreur de chargement du classement :", error);
+          document.getElementById("classement").innerHTML = "<p>Erreur lors du chargement du classement.</p>";
         });
     }
 
-    setupZones();
-    showWord();
-    loadLeaderboard();
-	clearInterval(intervalId);
+    // Logique de base du jeu
+    document.getElementById("nouvelle-partie").addEventListener("click", function() {
+      // Logique de nouvelle partie (à implémenter : générer grille, etc.)
+      console.log("Nouvelle partie démarrée !");
+      startTimer();  // Démarre le timer automatique
+
+      // Simulation de fin de jeu après 10 secondes (REMPLACE PAR TA VRAIE LOGIQUE DE VICTOIRE, ex. quand toutes les paires sont trouvées)
+      setTimeout(() => {
+        const tempsFinal = stopTimer();  // Arrête le timer et récupère le temps automatique
+        document.getElementById("temps-final").textContent = tempsFinal;
+        document.getElementById("modal").style.display = "block";  // Affiche le modal
+      }, 10000);  // 10 secondes pour la simulation – adapte ou supprime
+    });
+
+    // Événement pour enregistrer le score depuis le modal
+    document.getElementById("enregistrer").addEventListener("click", function() {
+      const pseudo = document.getElementById("pseudo").value;
+      const temps = document.getElementById("temps-final").textContent;  // Temps calculé automatiquement
+      enregistrerScore(pseudo, temps);
+    });
+
+    // Charge le classement au démarrage de la page (en temps réel)
+    window.onload = function() {
+      chargerClassement();
+      // Autre initialisation de ton jeu ici si needed
+    };
   </script>
 </body>
 </html>
