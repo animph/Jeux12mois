@@ -18,6 +18,7 @@
     #classement { display: none; } /* Caché initialement */
     #classement ol { list-style-type: decimal; padding-left: 20px; font-size: 1.2em; }
     #image-error { color: red; font-size: 1.2em; }
+    #header-controls { display: flex; justify-content: center; align-items: center; gap: 20px; margin-bottom: 10px; } /* Alignement bouton + temps */
   </style>
 </head>
 <body>
@@ -27,8 +28,11 @@
     <!-- Affichage dynamique de l'objet courant à trouver -->
     <h2>Objet à trouver : <span id="objet-courant">Cliquez sur "Nouvelle Partie" pour commencer</span></h2>
     
-    <!-- Bouton Nouvelle Partie, positionné juste au-dessus de l'image -->
-    <button id="nouvelle-partie">Nouvelle Partie</button>
+    <!-- Contrôles : Bouton Nouvelle Partie + Temps (côte à côte) -->
+    <div id="header-controls">
+      <button id="nouvelle-partie">Nouvelle Partie</button>
+      <p id="temps">Temps : 0s</p>
+    </div>
     
     <!-- Conteneur pour l'image -->
     <div id="image-container">
@@ -38,8 +42,6 @@
     
     <!-- Map des zones cliquables (générée dynamiquement) -->
     <map name="scene-map" id="scene-map"></map>
-    
-    <p id="temps">Temps : 0s</p>
     
     <!-- Modal pour le pseudo (seulement à la fin) -->
     <div id="modal" class="modal">
@@ -165,11 +167,11 @@
       zones.forEach((zone, index) => {
         const x1 = Math.round((zone.x / 100) * img.width);
         const y1 = Math.round((zone.y / 100) * img.height);
-        const x2 = Math.round((zone.w / 100) * img.width);
-        const y2 = Math.round((zone.h / 100) * img.height);
+        const largeur = Math.round((zone.w / 100) * img.width);
+        const hauteur = Math.round((zone.h / 100) * img.height);
         const area = document.createElement('area');
         area.shape = 'rect';
-        area.coords = `${x1},${y1},${x2},${y2}`; // Correction : x2 = x1 + largeur, y2 = y1 + hauteur
+        area.coords = `${x1},${y1},${x1 + largeur},${y1 + hauteur}`;
         area.alt = zone.nom;
         area.dataset.id = index;
         area.dataset.nom = zone.nom; // Stocke le nom pour comparaison
@@ -274,17 +276,31 @@
     // Logique de nouvelle partie
     document.getElementById("nouvelle-partie").addEventListener("click", function() {
       console.log("Bouton Nouvelle Partie cliqué !");
+      const img = document.getElementById('scene-image');
+      if (!img.complete) {
+        console.error("Image non chargée ! Impossible de démarrer.");
+        alert("L'image scene.png n'est pas chargée ! Vérifiez le fichier et rechargez la page.");
+        return;
+      }
+
+      // Reset variables
       objetsTrouves = 0;
       penalites = 0;
       objetActuel = 0;
+      document.getElementById("temps").textContent = "Temps : 0s"; // Reset affichage temps
       document.getElementById("modal").style.display = "none";
-      document.getElementById("classement").style.display = "none"; // Cache le classement pour nouvelle partie
-      // Reset toutes les areas
+      document.getElementById("classement").style.display = "none"; // Cache le classement
+
+      // Reset areas
       document.querySelectorAll('area').forEach(area => {
         area.dataset.found = '';
         area.onclick = () => trouverObjet(area.dataset.id);
       });
-      genererZones(); // Régénère les zones pour s'assurer
+
+      // Régénère zones si image prête
+      genererZones();
+      console.log("Image prête, zones générées pour nouvelle partie !");
+
       updateObjetCourant();
       startTimer();
       console.log("Nouvelle partie démarrée !");
@@ -303,16 +319,17 @@
       img.addEventListener('load', () => {
         console.log('Image chargée avec succès !');
         document.getElementById('image-error').style.display = 'none';
-        genererZones();
+        // Ne génère pas les zones ici : Attends le clic sur Nouvelle Partie
       });
       img.addEventListener('error', () => {
         console.error('Erreur de chargement de l\'image !');
         document.getElementById('image-error').style.display = 'block';
       });
-      if (img.complete) genererZones();  // Si déjà chargée
 
-      // Régénère zones sur resize fenêtre
-      window.addEventListener('resize', genererZones);
+      // Régénère zones sur resize fenêtre (seulement si jeu actif)
+      window.addEventListener('resize', () => {
+        if (intervalTimer) genererZones(); // Seulement si partie en cours
+      });
 
       chargerClassement(); // Charge initialement, mais reste caché
     };
