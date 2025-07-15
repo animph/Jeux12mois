@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Jeu du Mariage</title>
-  <link rel="stylesheet" href="styles.css" /> <!-- Ajoute ton CSS ici, ou utilise le basique ci-dessous -->
+  <link rel="stylesheet" href="styles.css" /> <!-- Ajoute ton CSS ici -->
 </head>
 <body>
   <div id="jeu">
@@ -28,8 +28,11 @@
       <li>Tasse</li>
     </ul>
     
-    <!-- L'image principale avec zones cliquables -->
-    <img src="scene.png" alt="Scène de mariage" usemap="#scene-map" id="scene-image">
+    <!-- Conteneur pour l'image (pour centrage et responsive) -->
+    <div id="image-container">
+      <img src="scene.png" alt="Scène de mariage" usemap="#scene-map" id="scene-image">
+      <p id="image-error" style="display: none; color: red;">Erreur : Impossible de charger l'image scene.png. Vérifiez le fichier !</p>
+    </div>
     
     <!-- Map des zones cliquables (générée dynamiquement en JS) -->
     <map name="scene-map" id="scene-map"></map>
@@ -103,9 +106,6 @@
       { nom: "Mouchoir bleu", x: 3.8, y: 58.1, w: 11.6, h: 61.8, intrus: true },
       { nom: "Chaussure homme", x: 12.5, y: 56.8, w: 30.1, h: 66.3, intrus: true },
       { nom: "Cravate verte", x: 33.2, y: 54.4, w: 41.1, h: 70.5, intrus: true },
-      { nom: "Rouge à lèvre", x: 43.7, y: 55.8, w: 48.2, h: сию
-
-```python
       { nom: "Rouge à lèvre", x: 43.7, y: 55.8, w: 48.2, h: 66.3, intrus: false },
       { nom: "Montre", x: 52.3, y: 50.5, w: 63.2, h: 63.7, intrus: true },
       { nom: "Crayon piège", x: 67.5, y: 53.7, w: 84.3, h: 58.8, intrus: true },
@@ -131,12 +131,13 @@
       const img = document.getElementById('scene-image');
       const map = document.getElementById('scene-map');
       map.innerHTML = '';  // Reset la map
+      console.log('Génération des zones... Image size:', img.width, 'x', img.height);
 
       zones.forEach((zone, index) => {
         const x1 = Math.round((zone.x / 100) * img.width);
         const y1 = Math.round((zone.y / 100) * img.height);
-        const x2 = Math.round(((zone.x + zone.w) / 100) * img.width);
-        const y2 = Math.round(((zone.y + zone.h) / 100) * img.height);
+        const x2 = Math.round((zone.w / 100) * img.width) + x1;  // w et h sont des largeurs/hauteurs en %
+        const y2 = Math.round((zone.h / 100) * img.height) + y1;
 
         const area = document.createElement('area');
         area.shape = 'rect';
@@ -146,8 +147,10 @@
         area.onclick = () => trouverObjet(index);  // Associe le clic
         map.appendChild(area);
       });
+      console.log('Zones générées avec succès !');
     }
 
+    // Fonction pour démarrer le timer
     function startTimer() {
       debutTimer = Date.now();
       document.getElementById("temps").textContent = "Temps : 0s";
@@ -157,42 +160,39 @@
       }, 1000);
     }
 
+    // Fonction pour arrêter le timer et calculer le temps final (nombre)
     function stopTimer() {
       clearInterval(intervalTimer);
       const tempsEcoule = Math.floor((Date.now() - debutTimer) / 1000);
-      const tempsFinal = (tempsEcoule + penalites) + "s";  // Ajoute les pénalités
-      return tempsFinal;
+      return tempsEcoule + penalites;  // Retourne un nombre (temps + pénalités)
     }
 
     // Fonction pour gérer un clic sur une zone
     function trouverObjet(id) {
       const zone = zones[id];
       const area = document.querySelector(`area[data-id="${id}"]`);
-      if (!area) return;  // Déjà cliquée ou invalide
+      if (!area || area.dataset.found) return;  // Déjà trouvée
 
-      // Désactive la zone pour éviter les clics multiples
+      // Marque comme trouvée
+      area.dataset.found = 'true';
       area.onclick = null;
-      area.dataset.found = 'true';  // Marque comme trouvée (pour CSS si needed)
 
       if (zone.intrus) {
-        // Intrus (mauvais) : +1s pénalité
         penalites += 1;
-        console.log(`Intrus cliqué : ${zone.nom} - +1s pénalité ! Pénalités totales : ${penalites}`);
+        console.log(`Intrus cliqué : ${zone.nom} - +1s pénalité ! Pénalités : ${penalites}`);
       } else {
-        // Bon objet : Compte pour la victoire
         objetsTrouves++;
-        console.log(`Bon objet trouvé : ${zone.nom} ! Objets trouvés : ${objetsTrouves}/${totalObjets}`);
+        console.log(`Bon objet trouvé : ${zone.nom} ! Objets : ${objetsTrouves}/${totalObjets}`);
       }
 
-      // Vérifie si tous les bons objets sont trouvés
       if (objetsTrouves >= totalObjets) {
-        const tempsFinal = stopTimer();  // Arrête le timer et calcule avec pénalités
+        const tempsFinal = stopTimer();
         document.getElementById("temps-final").textContent = tempsFinal;
-        document.getElementById("modal").style.display = "block";  // Affiche le modal
+        document.getElementById("modal").style.display = "block";
       }
     }
 
-    // Fonction pour enregistrer un score dans Firestore
+    // Fonction pour enregistrer un score dans Firestore (temps comme nombre pour tri)
     function enregistrerScore(pseudo, temps) {
       if (!pseudo) {
         alert("Veuillez entrer un pseudo !");
@@ -200,13 +200,13 @@
       }
       db.collection("scores").add({
         pseudo: pseudo,
-        temps: temps,
+        temps: parseInt(temps),  // Stocke comme nombre
         date: firebase.firestore.FieldValue.serverTimestamp()
       })
       .then(() => {
         alert("Score enregistré avec succès !");
         document.getElementById("modal").style.display = "none";
-        document.getElementById("pseudo").value = "";  // Reset le champ
+        document.getElementById("pseudo").value = "";
       })
       .catch((error) => {
         console.error("Erreur d'enregistrement :", error);
@@ -214,12 +214,12 @@
       });
     }
 
-    // Fonction pour charger le classement en temps réel avec onSnapshot
+    // Fonction pour charger le classement en temps réel
     function chargerClassement() {
       const classementDiv = document.getElementById("classement");
       db.collection("scores")
-        .orderBy("temps", "asc")  // Tri par temps croissant (meilleurs scores en premier)
-        .limit(10)  // Top 10
+        .orderBy("temps", "asc")  // Tri par temps croissant
+        .limit(10)
         .onSnapshot((snapshot) => {
           classementDiv.innerHTML = "<h2>Classement des meilleurs scores</h2><ol>";
           if (snapshot.empty) {
@@ -227,12 +227,12 @@
           } else {
             snapshot.forEach((doc) => {
               const data = doc.data();
-              classementDiv.innerHTML += `<li>${data.pseudo} - ${data.temps} (${new Date(data.date?.toDate()).toLocaleDateString()})</li>`;
+              classementDiv.innerHTML += `<li>${data.pseudo} - ${data.temps}s (${new Date(data.date?.toDate()).toLocaleDateString()})</li>`;
             });
           }
           classementDiv.innerHTML += "</ol>";
         }, (error) => {
-          console.error("Erreur de chargement du classement :", error);
+          console.error("Erreur de chargement :", error);
           classementDiv.innerHTML = "<p>Erreur lors du chargement du classement.</p>";
         });
     }
@@ -241,23 +241,40 @@
     document.getElementById("nouvelle-partie").addEventListener("click", function() {
       objetsTrouves = 0;
       penalites = 0;
-      genererZones();  // Régénère les zones (réactive les clics)
+      document.getElementById("modal").style.display = "none";
+      // Reset toutes les areas (supprime 'found' et réassocie onclick)
+      document.querySelectorAll('area').forEach(area => {
+        area.dataset.found = '';
+        area.onclick = () => trouverObjet(area.dataset.id);
+      });
+      startTimer();
       console.log("Nouvelle partie démarrée !");
-      startTimer();  // Démarre le timer automatique
     });
 
-    // Événement pour enregistrer le score depuis le modal
+    // Événement pour enregistrer
     document.getElementById("enregistrer").addEventListener("click", function() {
       const pseudo = document.getElementById("pseudo").value;
-      const temps = document.getElementById("temps-final").textContent;  // Temps calculé automatiquement avec pénalités
+      const temps = document.getElementById("temps-final").textContent;
       enregistrerScore(pseudo, temps);
     });
 
-    // Charge le classement et génère les zones au démarrage
+    // Initialisation au chargement
     window.onload = function() {
       const img = document.getElementById('scene-image');
-      img.addEventListener('load', genererZones);  // Génère zones quand l'image est chargée
+      img.addEventListener('load', () => {
+        console.log('Image chargée avec succès !');
+        document.getElementById('image-error').style.display = 'none';
+        genererZones();
+      });
+      img.addEventListener('error', () => {
+        console.error('Erreur de chargement de l\'image !');
+        document.getElementById('image-error').style.display = 'block';
+      });
       if (img.complete) genererZones();  // Si déjà chargée
+
+      // Régénère zones sur resize fenêtre
+      window.addEventListener('resize', genererZones);
+
       chargerClassement();
     };
   </script>
