@@ -202,7 +202,21 @@
           scoresList.innerHTML = "";
           snapshot.forEach(doc => {
             const data = doc.data();
-            scoresList.innerHTML += `<li><strong>${data.pseudo}</strong> : ${data.temps.toFixed(2)} s</li>`;
+            let detailHtml = "";
+if (data.details) {
+  detailHtml = `<ul>`;
+  Object.entries(data.details).forEach(([mot, temps]) => {
+    detailHtml += `<li>${mot} : ${temps.toFixed(2)} s</li>`;
+  });
+  detailHtml += `</ul>`;
+}
+
+scoresList.innerHTML += `
+  <li>
+    <strong>${data.pseudo}</strong> : ${data.temps.toFixed(2)} s
+    ${detailHtml}
+  </li>`;
+
           });
         })
         .catch(err => errorMessage.textContent = "Erreur de chargement du classement : " + err);
