@@ -4,43 +4,41 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Jeu du Mariage</title>
-  <link rel="stylesheet" href="styles.css" /> <!-- Ajoute ton CSS ici -->
+  <style>
+    body { font-family: Arial, sans-serif; font-size: 18px; text-align: center; } /* Texte global plus grand */
+    h1 { font-size: 2.5em; } /* Titres plus grands */
+    h2 { font-size: 1.8em; }
+    p, button, input { font-size: 1.2em; } /* Textes et éléments plus grands */
+    #objet-courant { color: red; font-weight: bold; font-size: 1.5em; } /* Objet courant mis en évidence */
+    #image-container { max-width: 100%; margin: 0 auto; text-align: center; }
+    #scene-image { max-width: 100%; height: auto; }
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1; }
+    .modal-content { background: white; margin: 15% auto; padding: 20px; width: 400px; text-align: center; border-radius: 8px; font-size: 1.2em; } /* Modal plus grand */
+    #classement { display: none; } /* Caché initialement */
+    #classement ol { list-style-type: decimal; padding-left: 20px; font-size: 1.2em; }
+    #image-error { color: red; font-size: 1.2em; }
+  </style>
 </head>
 <body>
   <div id="jeu">
     <h1>Jeu du Mariage</h1>
     
-    <!-- Liste des 13 objets à trouver (indices pour le joueur) -->
-    <h2>Objets à trouver :</h2>
-    <ul id="objets-a-trouver">
-      <li>chaussure femme</li>
-      <li>Bretelles</li>
-      <li>Carte d'identité</li>
-      <li>Ceinture</li>
-      <li>Clef</li>
-      <li>Marié H</li>
-      <li>Brosse</li>
-      <li>Mariée F</li>
-      <li>Mouchoir orange</li>
-      <li>Nœud papillon</li>
-      <li>Portefeuille</li>
-      <li>Rouge à lèvre</li>
-      <li>Tasse</li>
-    </ul>
+    <!-- Affichage dynamique de l'objet courant à trouver -->
+    <h2>Objet à trouver : <span id="objet-courant">Cliquez sur "Nouvelle Partie" pour commencer</span></h2>
     
-    <!-- Conteneur pour l'image (pour centrage et responsive) -->
+    <!-- Conteneur pour l'image -->
     <div id="image-container">
       <img src="scene.png" alt="Scène de mariage" usemap="#scene-map" id="scene-image">
-      <p id="image-error" style="display: none; color: red;">Erreur : Impossible de charger l'image scene.png. Vérifiez le fichier !</p>
+      <p id="image-error" style="display: none;">Erreur : Impossible de charger l'image scene.png. Vérifiez le fichier !</p>
     </div>
     
-    <!-- Map des zones cliquables (générée dynamiquement en JS) -->
+    <!-- Map des zones cliquables (générée dynamiquement) -->
     <map name="scene-map" id="scene-map"></map>
     
     <button id="nouvelle-partie">Nouvelle Partie</button>
     <p id="temps">Temps : 0s</p>
     
-    <!-- Modal pour le pseudo (seulement pseudo, temps auto-calculé avec pénalités) -->
+    <!-- Modal pour le pseudo (seulement à la fin) -->
     <div id="modal" class="modal">
       <div class="modal-content">
         <h2>Félicitations !</h2>
@@ -61,7 +59,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js"></script>
 
   <script>
-    // Configuration Firebase (tes valeurs exactes)
+    // Configuration Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyAAIr_vGlCMM9iuRwnqOQhb2cwv7DIVJFk",
       authDomain: "classementjeu-a2f8a.firebaseapp.com",
@@ -76,14 +74,32 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // Variables pour le timer automatique et la logique du jeu
+    // Variables du jeu
     let debutTimer;
     let intervalTimer;
-    let objetsTrouves = 0;  // Compteur d'objets bons trouvés
-    const totalObjets = 13;  // 13 objets à trouver
-    let penalites = 0;  // Compteur de pénalités (+1 par intrus cliqué)
+    let objetsTrouves = 0;
+    const totalObjets = 13;
+    let penalites = 0;
+    let objetActuel = 0; // Index de l'objet courant
 
-    // Liste des zones cliquables (exactement tes données)
+    // Ordre exact des objets à trouver (un par un)
+    const objetsOrdre = [
+      "chaussure femme",
+      "Bretelles",
+      "Carte d'identité",
+      "Ceinture",
+      "Clef",
+      "Marié H",
+      "Brosse",
+      "Mariée F",
+      "Mouchoir orange",
+      "Nœud papillon",
+      "Portefeuille",
+      "Rouge à lèvre",
+      "Tasse"
+    ];
+
+    // Liste des zones cliquables
     const zones = [
       { nom: "Clef", x: 3.2, y: 3.2, w: 19, h: 14.8, intrus: false },
       { nom: "Télécommande", x: 20.6, y: 2.2, w: 38.1, h: 14.8, intrus: true },
@@ -126,157 +142,41 @@
       { nom: "chaussure femme", x: 46.7, y: 88.4, w: 55, h: 92, intrus: false }
     ];
 
-    // Fonction pour générer dynamiquement les zones cliquables (basé sur % de l'image)
+    // Fonction pour mettre à jour l'affichage de l'objet courant
+    function updateObjetCourant() {
+      const courant = document.getElementById('objet-courant');
+      if (objetActuel < objetsOrdre.length) {
+        courant.textContent = objetsOrdre[objetActuel];
+      } else {
+        courant.textContent = "Tous trouvés !";
+      }
+    }
+
+    // Fonction pour générer les zones
     function genererZones() {
       const img = document.getElementById('scene-image');
       const map = document.getElementById('scene-map');
-      map.innerHTML = '';  // Reset la map
+      map.innerHTML = '';
       console.log('Génération des zones... Image size:', img.width, 'x', img.height);
 
       zones.forEach((zone, index) => {
         const x1 = Math.round((zone.x / 100) * img.width);
         const y1 = Math.round((zone.y / 100) * img.height);
-        const x2 = Math.round((zone.w / 100) * img.width) + x1;  // w et h sont des largeurs/hauteurs en %
-        const y2 = Math.round((zone.h / 100) * img.height) + y1;
-
+        const x2 = Math.round((zone.w / 100) * img.width);
+        const y2 = Math.round((zone.h / 100) * img.height);
         const area = document.createElement('area');
         area.shape = 'rect';
-        area.coords = `${x1},${y1},${x2},${y2}`;
+        area.coords = `${x1},${y1},${x1 + x2},${y1 + y2}`;
         area.alt = zone.nom;
-        area.dataset.id = index;  // ID unique pour la zone
-        area.onclick = () => trouverObjet(index);  // Associe le clic
+        area.dataset.id = index;
+        area.onclick = () => trouverObjet(index);
         map.appendChild(area);
       });
-      console.log('Zones générées avec succès !');
+      console.log('Zones générées !');
     }
 
     // Fonction pour démarrer le timer
     function startTimer() {
       debutTimer = Date.now();
-      document.getElementById("temps").textContent = "Temps : 0s";
-      intervalTimer = setInterval(() => {
-        const tempsEcoule = Math.floor((Date.now() - debutTimer) / 1000);
-        document.getElementById("temps").textContent = `Temps : ${tempsEcoule}s`;
-      }, 1000);
-    }
-
-    // Fonction pour arrêter le timer et calculer le temps final (nombre)
-    function stopTimer() {
-      clearInterval(intervalTimer);
-      const tempsEcoule = Math.floor((Date.now() - debutTimer) / 1000);
-      return tempsEcoule + penalites;  // Retourne un nombre (temps + pénalités)
-    }
-
-    // Fonction pour gérer un clic sur une zone
-    function trouverObjet(id) {
-      const zone = zones[id];
-      const area = document.querySelector(`area[data-id="${id}"]`);
-      if (!area || area.dataset.found) return;  // Déjà trouvée
-
-      // Marque comme trouvée
-      area.dataset.found = 'true';
-      area.onclick = null;
-
-      if (zone.intrus) {
-        penalites += 1;
-        console.log(`Intrus cliqué : ${zone.nom} - +1s pénalité ! Pénalités : ${penalites}`);
-      } else {
-        objetsTrouves++;
-        console.log(`Bon objet trouvé : ${zone.nom} ! Objets : ${objetsTrouves}/${totalObjets}`);
-      }
-
-      if (objetsTrouves >= totalObjets) {
-        const tempsFinal = stopTimer();
-        document.getElementById("temps-final").textContent = tempsFinal;
-        document.getElementById("modal").style.display = "block";
-      }
-    }
-
-    // Fonction pour enregistrer un score dans Firestore (temps comme nombre pour tri)
-    function enregistrerScore(pseudo, temps) {
-      if (!pseudo) {
-        alert("Veuillez entrer un pseudo !");
-        return;
-      }
-      db.collection("scores").add({
-        pseudo: pseudo,
-        temps: parseInt(temps),  // Stocke comme nombre
-        date: firebase.firestore.FieldValue.serverTimestamp()
-      })
-      .then(() => {
-        alert("Score enregistré avec succès !");
-        document.getElementById("modal").style.display = "none";
-        document.getElementById("pseudo").value = "";
-      })
-      .catch((error) => {
-        console.error("Erreur d'enregistrement :", error);
-        alert("Erreur lors de l'enregistrement du score.");
-      });
-    }
-
-    // Fonction pour charger le classement en temps réel
-    function chargerClassement() {
-      const classementDiv = document.getElementById("classement");
-      db.collection("scores")
-        .orderBy("temps", "asc")  // Tri par temps croissant
-        .limit(10)
-        .onSnapshot((snapshot) => {
-          classementDiv.innerHTML = "<h2>Classement des meilleurs scores</h2><ol>";
-          if (snapshot.empty) {
-            classementDiv.innerHTML += "<li>Aucun score pour le moment.</li>";
-          } else {
-            snapshot.forEach((doc) => {
-              const data = doc.data();
-              classementDiv.innerHTML += `<li>${data.pseudo} - ${data.temps}s (${new Date(data.date?.toDate()).toLocaleDateString()})</li>`;
-            });
-          }
-          classementDiv.innerHTML += "</ol>";
-        }, (error) => {
-          console.error("Erreur de chargement :", error);
-          classementDiv.innerHTML = "<p>Erreur lors du chargement du classement.</p>";
-        });
-    }
-
-    // Logique de nouvelle partie
-    document.getElementById("nouvelle-partie").addEventListener("click", function() {
-      objetsTrouves = 0;
-      penalites = 0;
-      document.getElementById("modal").style.display = "none";
-      // Reset toutes les areas (supprime 'found' et réassocie onclick)
-      document.querySelectorAll('area').forEach(area => {
-        area.dataset.found = '';
-        area.onclick = () => trouverObjet(area.dataset.id);
-      });
-      startTimer();
-      console.log("Nouvelle partie démarrée !");
-    });
-
-    // Événement pour enregistrer
-    document.getElementById("enregistrer").addEventListener("click", function() {
-      const pseudo = document.getElementById("pseudo").value;
-      const temps = document.getElementById("temps-final").textContent;
-      enregistrerScore(pseudo, temps);
-    });
-
-    // Initialisation au chargement
-    window.onload = function() {
-      const img = document.getElementById('scene-image');
-      img.addEventListener('load', () => {
-        console.log('Image chargée avec succès !');
-        document.getElementById('image-error').style.display = 'none';
-        genererZones();
-      });
-      img.addEventListener('error', () => {
-        console.error('Erreur de chargement de l\'image !');
-        document.getElementById('image-error').style.display = 'block';
-      });
-      if (img.complete) genererZones();  // Si déjà chargée
-
-      // Régénère zones sur resize fenêtre
-      window.addEventListener('resize', genererZones);
-
-      chargerClassement();
-    };
-  </script>
-</body>
-</html>
+      document.getElementById("temps").
+        
