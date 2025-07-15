@@ -29,6 +29,8 @@
   <div id="leaderboard">
     <h2>🏆 Classement</h2>
     <ul id="scores"></ul>
+    <button onclick="exportCSV()">📥 Exporter en CSV</button>
+
   </div>
 
   <div id="error-message"></div>
@@ -226,5 +228,35 @@ scoresList.innerHTML += `
     showWord();
     loadLeaderboard();
   </script>
+  
+  function exportCSV() {
+  db.collection("scores")
+    .orderBy("temps")
+    .get()
+    .then(snapshot => {
+      let csv = "pseudo,temps_total," + mots.join(",") + "\n";
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        const ligne = [
+          data.pseudo,
+          data.temps.toFixed(2),
+          ...mots.map(mot => data.details?.[mot]?.toFixed(2) || "")
+        ];
+        csv += ligne.join(",") + "\n";
+      });
+
+      // Création d'un lien de téléchargement
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "classement-jeu.csv";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    })
+    .catch(err => alert("Erreur export CSV : " + err));
+}
+
 </body>
 </html>
