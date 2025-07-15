@@ -1,338 +1,151 @@
-<!DOCTYPE html>
-<html lang="fr">
+<!DOCTYPE html><html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Jeu du Mariage</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jeu de Recherche Visuelle - Mariage</title>
   <style>
-    body { font-family: Arial, sans-serif; font-size: 18px; text-align: center; } /* Texte global plus grand */
-    h1 { font-size: 2.5em; } /* Titres plus grands */
-    h2 { font-size: 1.8em; }
-    p, button, input { font-size: 1.2em; } /* Textes et éléments plus grands */
-    button { font-size: 1.5em; padding: 10px 20px; margin: 10px 0; } /* Boutons plus grands, avec marge */
-    #objet-courant { color: red; font-weight: bold; font-size: 1.5em; } /* Objet courant mis en évidence */
-    #image-container { max-width: 100%; margin: 0 auto; text-align: center; }
-    #scene-image { max-width: 100%; height: auto; }
-    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1; }
-    .modal-content { background: white; margin: 15% auto; padding: 20px; width: 400px; text-align: center; border-radius: 8px; font-size: 1.2em; } /* Modal plus grand */
-    #classement { display: none; } /* Caché initialement */
-    #classement ol { list-style-type: decimal; padding-left: 20px; font-size: 1.2em; }
-    #image-error { color: red; font-size: 1.2em; }
-    #header-controls { display: flex; justify-content: center; align-items: center; gap: 20px; margin-bottom: 10px; } /* Alignement bouton + temps */
-  </style>
-</head>
-<body>
-  <div id="jeu">
-    <h1>Jeu du Mariage</h1>
-    
-    <!-- Affichage dynamique de l'objet courant à trouver -->
-    <h2>Objet à trouver : <span id="objet-courant">Cliquez sur "Nouvelle Partie" pour commencer</span></h2>
-    
-    <!-- Contrôles : Bouton Nouvelle Partie + Temps (côte à côte) -->
-    <div id="header-controls">
-      <button id="nouvelle-partie">Nouvelle Partie</button>
-      <p id="temps">Temps : 0s</p>
-    </div>
-    
-    <!-- Conteneur pour l'image -->
-    <div id="image-container">
-      <img src="scene.png" alt="Scène de mariage" usemap="#scene-map" id="scene-image">
-      <p id="image-error" style="display: none;">Erreur : Impossible de charger l'image scene.png. Vérifiez le fichier !</p>
-    </div>
-    
-    <!-- Map des zones cliquables (générée dynamiquement) -->
-    <map name="scene-map" id="scene-map"></map>
-    
-    <!-- Modal pour le pseudo (seulement à la fin) -->
-    <div id="modal" class="modal">
-      <div class="modal-content">
-        <h2>Félicitations !</h2>
-        <p>Vous avez gagné en <span id="temps-final"></span> secondes !</p>
-        <input type="text" id="pseudo" placeholder="Entrez votre pseudo" />
-        <button id="enregistrer">Enregistrer mon score</button>
-      </div>
-    </div>
-    
-    <div id="classement">
-      <h2>Classement des meilleurs scores</h2>
-      <ol id="leaderboard"></ol> <!-- Liste pour les scores -->
-    </div>
-  </div>
-
-  <!-- Scripts Firebase CDN -->
-  <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js"></script>
-
-  <script>
-    // Configuration Firebase
+    body { font-family: sans-serif; text-align: center; background-color: #fef8f4; }
+    #game-container { position: relative; display: inline-block; }
+    #wedding-image { max-width: 100%; height: auto; }
+    .target { position: absolute; border: 2px solid transparent; cursor: pointer; }
+    .found { border-color: green; }
+    #current-word { font-size: 1.5em; margin: 10px; }
+    #results, #leaderboard { margin-top: 20px; }
+  </style>  <!-- Firebase -->  <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js"></script>  <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js"></script>  <script>
     const firebaseConfig = {
       apiKey: "AIzaSyAAIr_vGlCMM9iuRwnqOQhb2cwv7DIVJFk",
       authDomain: "classementjeu-a2f8a.firebaseapp.com",
       projectId: "classementjeu-a2f8a",
-      storageBucket: "classementjeu-a2f8a.firebasestorage.app",
+      storageBucket: "classementjeu-a2f8a.appspot.com",
       messagingSenderId: "70538879353",
       appId: "1:70538879353:web:05b35cb2c3930c34380fa8",
       measurementId: "G-JXNCRWDN5C"
     };
-
-    // Initialisation de Firebase
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
-
-    // Variables du jeu
-    let debutTimer;
-    let intervalTimer;
-    let objetsTrouves = 0;
-    const totalObjets = 13;
-    let penalites = 0;
-    let objetActuel = 0; // Index de l'objet courant
-
-    // Ordre exact des objets à trouver (un par un)
-    const objetsOrdre = [
-      "chaussure femme",
-      "Bretelles",
-      "Carte d'identité",
-      "Ceinture",
-      "Clef",
-      "Marié H",
-      "Brosse",
-      "Mariée F",
-      "Mouchoir orange",
-      "Nœud papillon",
-      "Portefeuille",
-      "Rouge à lèvre",
-      "Tasse"
-    ];
-
-    // Liste des zones cliquables
+  </script></head>
+<body>
+  <h1>🎯 Jeu de Recherche - Spécial Mariage</h1>
+  <div id="current-word">
+    Cliquez sur : <strong id="word"></strong><br>
+    ⏱️ Temps : <span id="timer">0.0</span> sec
+  </div>
+  <div id="game-container">
+    <img id="wedding-image" src="scene.png" alt="Scène de mariage">
+  </div>
+  <div id="results"></div>
+  <div id="leaderboard"><h2>🏆 Classement</h2><ul id="scores"></ul></div>  <script>
+    const mots = ["chaussure femme", "Bretelles", "Carte d'identité", "Ceinture", "Clef", "Marié H", "Brosse", "Mariée F", "Mouchoir orange", "Nœud papillon", "Portefeuille", "Rouge à lèvre", "Tasse"];
     const zones = [
       { nom: "Clef", x: 3.2, y: 3.2, w: 19, h: 14.8, intrus: false },
-      { nom: "Télécommande", x: 20.6, y: 2.2, w: 38.1, h: 14.8, intrus: true },
-      { nom: "Couteau", x: 38.4, y: 3.2, w: 55.3, h: 13.7, intrus: true },
       { nom: "Portefeuille", x: 55.5, y: 3.2, w: 77.5, h: 13.7, intrus: false },
       { nom: "Ceinture", x: 4.8, y: 27.4, w: 23.7, h: 33.7, intrus: false },
-      { nom: "Bouteille d'eau", x: 26.9, y: 30.5, w: 36.4, h: 46.3, intrus: true },
-      { nom: "Corde bizarre", x: 23.7, y: 19, w: 45.9, h: 28.4, intrus: true },
       { nom: "Marié H", x: 47.4, y: 14.8, w: 59.1, h: 48.4, intrus: false },
       { nom: "Mariée F", x: 59.3, y: 15.8, w: 75.9, h: 48.4, intrus: false },
-      { nom: "Lunettes", x: 75.9, y: 13.7, w: 96.4, h: 19, intrus: true },
-      { nom: "Masque 1", x: 75.9, y: 20, w: 96.4, h: 13.7, intrus: true },
-      { nom: "Savon", x: 77.5, y: 27.4, w: 86.1, h: 40, intrus: true },
-      { nom: "L Coton", x: 86.9, y: 28.4, w: 96.4, h: 35.8, intrus: true },
       { nom: "Brosse", x: 87.1, y: 36.9, w: 95.6, h: 52.6, intrus: false },
       { nom: "Tasse", x: 6.4, y: 47.4, w: 19, h: 54.7, intrus: false },
-      { nom: "Pièce", x: 23.7, y: 47.4, w: 31.6, h: 51.6, intrus: true },
-      { nom: "Stylo", x: 31.8, y: 46.3, w: 44, h: 53.7, intrus: true },
-      { nom: "Bague moche", x: 44.1, y: 49.5, w: 52.2, h: 53.2, intrus: true },
-      { nom: "Mouchoir bleu", x: 3.8, y: 58.1, w: 11.6, h: 61.8, intrus: true },
-      { nom: "Chaussure homme", x: 12.5, y: 56.8, w: 30.1, h: 66.3, intrus: true },
-      { nom: "Cravate verte", x: 33.2, y: 54.4, w: 41.1, h: 70.5, intrus: true },
       { nom: "Rouge à lèvre", x: 43.7, y: 55.8, w: 48.2, h: 66.3, intrus: false },
-      { nom: "Montre", x: 52.3, y: 50.5, w: 63.2, h: 63.7, intrus: true },
-      { nom: "Crayon piège", x: 67.5, y: 53.7, w: 84.3, h: 58.8, intrus: true },
-      { nom: "Masque 2", x: 5.4, y: 68.4, w: 23.9, h: 76.9, intrus: true },
       { nom: "Bretelles", x: 42.4, y: 66.4, w: 59.1, h: 76.9, intrus: false },
-      { nom: "Nain", x: 63.4, y: 58.9, w: 74.3, h: 74.4, intrus: true },
-      { nom: "Lampe de poche bleue", x: 75.6, y: 61.1, w: 86.8, h: 70.5, intrus: true },
-      { nom: "Clé USB", x: 88.5, y: 62, w: 95.2, h: 69.3, intrus: true },
-      { nom: "Sandale", x: 4.8, y: 84.2, w: 25.3, h: 95.7, intrus: true },
-      { nom: "Briquet", x: 28.3, y: 85, w: 33.5, h: 94.8, intrus: true },
-      { nom: "Boite bague", x: 36.9, y: 87, w: 46.5, h: 92.5, intrus: true },
-      { nom: "Billet ", x: 42.5, y: 78.7, w: 58.5, h: 86.4, intrus: true },
       { nom: "Nœud papillon", x: 59.8, y: 75.5, w: 73.4, h: 80.8, intrus: false },
       { nom: "Carte d'identité", x: 77, y: 71.4, w: 87.6, h: 77.9, intrus: false },
-      { nom: "Allumette", x: 87.7, y: 75.5, w: 94.8, h: 81.3, intrus: true },
       { nom: "Mouchoir orange", x: 61.8, y: 82.2, w: 72.4, h: 87.5, intrus: false },
-      { nom: "Ange", x: 73.8, y: 84.1, w: 82.2, h: 94.8, intrus: true },
       { nom: "chaussure femme", x: 46.7, y: 88.4, w: 55, h: 92, intrus: false }
     ];
 
-    // Fonction pour mettre à jour l'affichage de l'objet courant
-    function updateObjetCourant() {
-      const courant = document.getElementById('objet-courant');
-      if (objetActuel < objetsOrdre.length) {
-        courant.textContent = objetsOrdre[objetActuel];
-      } else {
-        courant.textContent = "Tous trouvés !";
+    const container = document.getElementById("game-container");
+    const wordDisplay = document.getElementById("word");
+    const results = document.getElementById("results");
+    const scoresList = document.getElementById("scores");
+    let index = 0, startTime = 0, totalPenalty = 0, times = [], intervalId;
+    const timerDisplay = document.getElementById("timer");
+
+    function showWord() {
+      wordDisplay.textContent = mots[index];
+      startTime = Date.now();
+      if (intervalId) clearInterval(intervalId);
+      intervalId = setInterval(() => {
+        const t = (Date.now() - startTime) / 1000;
+        timerDisplay.textContent = t.toFixed(1);
+      }, 100);
+    }
+
+    function endGame() {
+      const total = times.reduce((a, b) => a + b, 0) + totalPenalty;
+      results.innerHTML = `<h2>Résultat :</h2>`;
+      mots.forEach((m, i) => {
+        results.innerHTML += `<p>${m} : ${times[i].toFixed(2)} sec</p>`;
+      });
+      if (totalPenalty > 0) results.innerHTML += `<p>Pénalité : +${totalPenalty} sec</p>`;
+      results.innerHTML += `<h3>Temps total : ${total.toFixed(2)} sec</h3>`;
+
+      const pseudo = prompt("Entrez votre Prénom pour le classement :");
+      if (pseudo) {
+        db.collection("scores").add({
+          pseudo: pseudo,
+          temps: parseFloat(total.toFixed(2)),
+          date: firebase.firestore.Timestamp.now()
+        }).then(() => {
+          console.log("Score enregistré dans Firebase");
+          loadLeaderboard();
+        }).catch((error) => {
+          console.error("Erreur lors de l'enregistrement :", error);
+        });
       }
     }
 
-    // Fonction pour générer les zones
-    function genererZones() {
-      const img = document.getElementById('scene-image');
-      const map = document.getElementById('scene-map');
-      map.innerHTML = '';
-      console.log('Génération des zones... Image size:', img.width, 'x', img.height);
-
-      zones.forEach((zone, index) => {
-        const x1 = Math.round((zone.x / 100) * img.width);
-        const y1 = Math.round((zone.y / 100) * img.height);
-        const largeur = Math.round((zone.w / 100) * img.width);
-        const hauteur = Math.round((zone.h / 100) * img.height);
-        const area = document.createElement('area');
-        area.shape = 'rect';
-        area.coords = `${x1},${y1},${x1 + largeur},${y1 + hauteur}`;
-        area.alt = zone.nom;
-        area.dataset.id = index;
-        area.dataset.nom = zone.nom; // Stocke le nom pour comparaison
-        area.dataset.found = ''; // Pour marquer comme trouvé
-        area.onclick = () => trouverObjet(index);
-        map.appendChild(area);
+    function setupZones() {
+      zones.forEach(zone => {
+        const div = document.createElement("div");
+        div.classList.add("target");
+        div.style.left = zone.x + "%";
+        div.style.top = zone.y + "%";
+        div.style.width = zone.w + "%";
+        div.style.height = zone.h + "%";
+        div.dataset.nom = zone.nom;
+        div.dataset.intrus = zone.intrus;
+        div.onclick = () => handleClick(zone);
+        container.appendChild(div);
       });
-      console.log('Zones générées !');
     }
 
-    // Fonction pour gérer le clic sur une zone
-    function trouverObjet(index) {
-      const area = document.querySelector(`area[data-id="${index}"]`);
-      if (area.dataset.found === 'true') return; // Déjà trouvé, ignore
-
-      const zone = zones[index];
-      console.log('Clic sur :', zone.nom);
-
+    function handleClick(zone) {
       if (zone.intrus) {
-        penalites += 1;
-        console.log('Intrus ! Pénalité +1s. Total pénalités:', penalites);
-        alert('Intrus ! +1 seconde de pénalité.');
-      } else {
-        // Vérifie si c'est l'objet attendu dans l'ordre
-        if (zone.nom.toLowerCase() === objetsOrdre[objetActuel].toLowerCase()) {
-          objetsTrouves++;
-          objetActuel++;
-          area.dataset.found = 'true'; // Marque comme trouvé
-          console.log('Objet trouvé dans l\'ordre ! Trouvés:', objetsTrouves);
-          updateObjetCourant();
-          if (objetsTrouves === totalObjets) {
-            finJeu();
-          }
-        } else {
-          console.log('Bon objet, mais pas dans l\'ordre ! Ignoré.');
-          alert('Ce n\'est pas l\'objet attendu !');
+        totalPenalty += 1;
+        alert(`Intrus cliqué : ${zone.nom} (+1s)`);
+        return;
+      }
+      if (zone.nom === mots[index]) {
+        const timeTaken = (Date.now() - startTime) / 1000;
+        times.push(timeTaken);
+        index++;
+        if (index < mots.length) showWord();
+        else {
+          wordDisplay.textContent = "✔️ Terminé !";
+          endGame();
         }
       }
     }
 
-    // Fonction pour démarrer le timer
-    function startTimer() {
-      if (intervalTimer) clearInterval(intervalTimer);
-      debutTimer = Date.now();
-      intervalTimer = setInterval(() => {
-        const tempsEcoule = ((Date.now() - debutTimer) / 1000) + penalites;
-        document.getElementById("temps").textContent = `Temps : ${tempsEcoule.toFixed(2)}s`;
-      }, 100);
-      console.log('Timer démarré !');
-    }
-
-    // Fonction de fin de jeu
-    function finJeu() {
-      clearInterval(intervalTimer);
-      const tempsEcoule = ((Date.now() - debutTimer) / 1000) + penalites;
-      document.getElementById("temps-final").textContent = tempsEcoule.toFixed(2);
-      document.getElementById("modal").style.display = "block";
-      console.log('Jeu terminé ! Temps final:', tempsEcoule.toFixed(2));
-    }
-
-    // Fonction pour enregistrer le score
-    function enregistrerScore(pseudo, temps) {
-      if (!pseudo) {
-        alert("Veuillez entrer un pseudo !");
-        return;
-      }
-      db.collection("scores").add({
-        pseudo: pseudo,
-        temps: parseFloat(temps),
-        date: firebase.firestore.FieldValue.serverTimestamp()
-      }).then(() => {
-        console.log("Score enregistré !");
-        document.getElementById("modal").style.display = "none";
-        chargerClassement(); // Recharge et affiche le classement
-        document.getElementById("classement").style.display = "block"; // Affiche le classement après enregistrement
-      }).catch(error => {
-        console.error("Erreur d'enregistrement :", error);
-      });
-    }
-
-    // Fonction pour charger le classement (top 10, trié par temps ascendant)
-    function chargerClassement() {
-      const leaderboard = document.getElementById("leaderboard");
-      leaderboard.innerHTML = '';
+    function loadLeaderboard() {
       db.collection("scores")
         .orderBy("temps", "asc")
         .limit(10)
         .get()
         .then(querySnapshot => {
+          scoresList.innerHTML = "";
           querySnapshot.forEach(doc => {
             const data = doc.data();
-            const li = document.createElement("li");
-            li.textContent = `${data.pseudo} : ${data.temps.toFixed(2)}s`;
-            leaderboard.appendChild(li);
+            scoresList.innerHTML += `<li><strong>${data.pseudo}</strong> : ${data.temps} s</li>`;
           });
-        }).catch(error => {
-          console.error("Erreur de chargement :", error);
-          leaderboard.innerHTML = '<li>Erreur lors du chargement.</li>';
+        })
+        .catch(error => {
+          console.error("Erreur classement :", error);
         });
     }
 
-    // Logique de nouvelle partie
-    document.getElementById("nouvelle-partie").addEventListener("click", function() {
-      console.log("Bouton Nouvelle Partie cliqué !");
-      const img = document.getElementById('scene-image');
-      if (!img.complete) {
-        console.error("Image non chargée ! Impossible de démarrer.");
-        alert("L'image scene.png n'est pas chargée ! Vérifiez le fichier et rechargez la page.");
-        return;
-      }
-
-      // Reset variables
-      objetsTrouves = 0;
-      penalites = 0;
-      objetActuel = 0;
-      document.getElementById("temps").textContent = "Temps : 0s"; // Reset affichage temps
-      document.getElementById("modal").style.display = "none";
-      document.getElementById("classement").style.display = "none"; // Cache le classement
-
-      // Reset areas
-      document.querySelectorAll('area').forEach(area => {
-        area.dataset.found = '';
-        area.onclick = () => trouverObjet(area.dataset.id);
-      });
-
-      // Régénère zones si image prête
-      genererZones();
-      console.log("Image prête, zones générées pour nouvelle partie !");
-
-      updateObjetCourant();
-      startTimer();
-      console.log("Nouvelle partie démarrée !");
-    });
-
-    // Événement pour enregistrer
-    document.getElementById("enregistrer").addEventListener("click", function() {
-      const pseudo = document.getElementById("pseudo").value;
-      const temps = document.getElementById("temps-final").textContent;
-      enregistrerScore(pseudo, temps);
-    });
-
-    // Initialisation au chargement
-    window.onload = function() {
-      const img = document.getElementById('scene-image');
-      img.addEventListener('load', () => {
-        console.log('Image chargée avec succès !');
-        document.getElementById('image-error').style.display = 'none';
-        // Ne génère pas les zones ici : Attends le clic sur Nouvelle Partie
-      });
-      img.addEventListener('error', () => {
-        console.error('Erreur de chargement de l\'image !');
-        document.getElementById('image-error').style.display = 'block';
-      });
-
-      // Régénère zones sur resize fenêtre (seulement si jeu actif)
-      window.addEventListener('resize', () => {
-        if (intervalTimer) genererZones(); // Seulement si partie en cours
-      });
-
-      chargerClassement(); // Charge initialement, mais reste caché
-    };
-  </script>
-</body>
+    setupZones();
+    showWord();
+    loadLeaderboard();
+    clearInterval(intervalId);
+  </script></body>
 </html>
