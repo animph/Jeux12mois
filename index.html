@@ -175,13 +175,22 @@
 
       const pseudo = prompt("Entrez votre prénom pour le classement :");
       if (pseudo) {
-        db.collection("scores").add({
-          pseudo: pseudo,
-          temps: total,
-          date: new Date()
-        }).then(() => loadLeaderboard())
-          .catch(err => errorMessage.textContent = "Erreur lors de l'enregistrement : " + err);
-      }
+  // Création d'un objet de détails avec les temps par mot
+  const details = {};
+  mots.forEach((mot, i) => {
+    details[mot] = parseFloat((times[i] || 0).toFixed(2));
+  });
+
+  db.collection("scores").add({
+    pseudo: pseudo,
+    temps: parseFloat(total.toFixed(2)),
+    date: new Date(),
+    details: details
+  })
+  .then(() => loadLeaderboard())
+  .catch(err => errorMessage.textContent = "Erreur lors de l'enregistrement : " + err);
+}
+
     }
 
     function loadLeaderboard() {
