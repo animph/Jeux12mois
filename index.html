@@ -9,6 +9,7 @@
     h1 { font-size: 2.5em; } /* Titres plus grands */
     h2 { font-size: 1.8em; }
     p, button, input { font-size: 1.2em; } /* Textes et éléments plus grands */
+    button { font-size: 1.5em; padding: 10px 20px; margin: 10px 0; } /* Boutons plus grands, avec marge */
     #objet-courant { color: red; font-weight: bold; font-size: 1.5em; } /* Objet courant mis en évidence */
     #image-container { max-width: 100%; margin: 0 auto; text-align: center; }
     #scene-image { max-width: 100%; height: auto; }
@@ -26,6 +27,9 @@
     <!-- Affichage dynamique de l'objet courant à trouver -->
     <h2>Objet à trouver : <span id="objet-courant">Cliquez sur "Nouvelle Partie" pour commencer</span></h2>
     
+    <!-- Bouton Nouvelle Partie, positionné juste au-dessus de l'image -->
+    <button id="nouvelle-partie">Nouvelle Partie</button>
+    
     <!-- Conteneur pour l'image -->
     <div id="image-container">
       <img src="scene.png" alt="Scène de mariage" usemap="#scene-map" id="scene-image">
@@ -35,7 +39,6 @@
     <!-- Map des zones cliquables (générée dynamiquement) -->
     <map name="scene-map" id="scene-map"></map>
     
-    <button id="nouvelle-partie">Nouvelle Partie</button>
     <p id="temps">Temps : 0s</p>
     
     <!-- Modal pour le pseudo (seulement à la fin) -->
@@ -50,7 +53,7 @@
     
     <div id="classement">
       <h2>Classement des meilleurs scores</h2>
-      <!-- Le leaderboard sera affiché ici -->
+      <ol id="leaderboard"></ol> <!-- Liste pour les scores -->
     </div>
   </div>
 
@@ -166,17 +169,153 @@
         const y2 = Math.round((zone.h / 100) * img.height);
         const area = document.createElement('area');
         area.shape = 'rect';
-        area.coords = `${x1},${y1},${x1 + x2},${y1 + y2}`;
+        area.coords = `${x1},${y1},${x2},${y2}`; // Correction : x2 = x1 + largeur, y2 = y1 + hauteur
         area.alt = zone.nom;
         area.dataset.id = index;
+        area.dataset.nom = zone.nom; // Stocke le nom pour comparaison
+        area.dataset.found = ''; // Pour marquer comme trouvé
         area.onclick = () => trouverObjet(index);
         map.appendChild(area);
       });
       console.log('Zones générées !');
     }
 
+    // Fonction pour gérer le clic sur une zone
+    function trouverObjet(index) {
+      const area = document.querySelector(`area[data-id="${index}"]`);
+      if (area.dataset.found === 'true') return; // Déjà trouvé, ignore
+
+      const zone = zones[index];
+      console.log('Clic sur :', zone.nom);
+
+      if (zone.intrus) {
+        penalites += 1;
+        console.log('Intrus ! Pénalité +1s. Total pénalités:', penalites);
+        alert('Intrus ! +1 seconde de pénalité.');
+      } else {
+        // Vérifie si c'est l'objet attendu dans l'ordre
+        if (zone.nom.toLowerCase() === objetsOrdre[objetActuel].toLowerCase()) {
+          objetsTrouves++;
+          objetActuel++;
+          area.dataset.found = 'true'; // Marque comme trouvé
+          console.log('Objet trouvé dans l\'ordre ! Trouvés:', objetsTrouves);
+          updateObjetCourant();
+          if (objetsTrouves === totalObjets) {
+            finJeu();
+          }
+        } else {
+          console.log('Bon objet, mais pas dans l\'ordre ! Ignoré.');
+          alert('Ce n\'est pas l\'objet attendu !');
+        }
+      }
+    }
+
     // Fonction pour démarrer le timer
     function startTimer() {
+      if (intervalTimer) clearInterval(intervalTimer);
       debutTimer = Date.now();
-      document.getElementById("temps").
-        
+      intervalTimer = setInterval(() => {
+        const tempsEcoule = ((Date.now() - debutTimer) / 1000) + penalites;
+        document.getElementById("temps").textContent = `Temps : ${tempsEcoule.toFixed(2)}s`;
+      }, 100);
+      console.log('Timer démarré !');
+    }
+
+    // Fonction de fin de jeu
+    function finJeu() {
+      clearInterval(intervalTimer);
+      const tempsEcoule = ((Date.now() - debutTimer) / 1000) + penalites;
+      document.getElementById("temps-final").textContent = tempsEcoule.toFixed(2);
+      document.getElementById("modal").style.display = "block";
+      console.log('Jeu terminé ! Temps final:', tempsEcoule.toFixed(2));
+    }
+
+    // Fonction pour enregistrer le score
+    function enregistrerScore(pseudo, temps) {
+      if (!pseudo) {
+        alert("Veuillez entrer un pseudo !");
+        return;
+      }
+      db.collection("scores").add({
+        pseudo: pseudo,
+        temps: parseFloat(temps),
+        date: firebase.firestore.FieldValue.serverTimestamp()
+      }).then(() => {
+        console.log("Score enregistré !");
+        document.getElementById("modal").style.display = "none";
+        chargerClassement(); // Recharge et affiche le classement
+        document.getElementById("classement").style.display = "block"; // Affiche le classement après enregistrement
+      }).catch(error => {
+        console.error("Erreur d'enregistrement :", error);
+      });
+    }
+
+    // Fonction pour charger le classement (top 10, trié par temps ascendant)
+    function chargerClassement() {
+      const leaderboard = document.getElementById("leaderboard");
+      leaderboard.innerHTML = '';
+      db.collection("scores")
+        .orderBy("temps", "asc")
+        .limit(10)
+        .get()
+        .then(querySnapshot => {
+          querySnapshot.forEach(doc => {
+            const data = doc.data();
+            const li = document.createElement("li");
+            li.textContent = `${data.pseudo} : ${data.temps.toFixed(2)}s`;
+            leaderboard.appendChild(li);
+          });
+        }).catch(error => {
+          console.error("Erreur de chargement :", error);
+          leaderboard.innerHTML = '<li>Erreur lors du chargement.</li>';
+        });
+    }
+
+    // Logique de nouvelle partie
+    document.getElementById("nouvelle-partie").addEventListener("click", function() {
+      console.log("Bouton Nouvelle Partie cliqué !");
+      objetsTrouves = 0;
+      penalites = 0;
+      objetActuel = 0;
+      document.getElementById("modal").style.display = "none";
+      document.getElementById("classement").style.display = "none"; // Cache le classement pour nouvelle partie
+      // Reset toutes les areas
+      document.querySelectorAll('area').forEach(area => {
+        area.dataset.found = '';
+        area.onclick = () => trouverObjet(area.dataset.id);
+      });
+      genererZones(); // Régénère les zones pour s'assurer
+      updateObjetCourant();
+      startTimer();
+      console.log("Nouvelle partie démarrée !");
+    });
+
+    // Événement pour enregistrer
+    document.getElementById("enregistrer").addEventListener("click", function() {
+      const pseudo = document.getElementById("pseudo").value;
+      const temps = document.getElementById("temps-final").textContent;
+      enregistrerScore(pseudo, temps);
+    });
+
+    // Initialisation au chargement
+    window.onload = function() {
+      const img = document.getElementById('scene-image');
+      img.addEventListener('load', () => {
+        console.log('Image chargée avec succès !');
+        document.getElementById('image-error').style.display = 'none';
+        genererZones();
+      });
+      img.addEventListener('error', () => {
+        console.error('Erreur de chargement de l\'image !');
+        document.getElementById('image-error').style.display = 'block';
+      });
+      if (img.complete) genererZones();  // Si déjà chargée
+
+      // Régénère zones sur resize fenêtre
+      window.addEventListener('resize', genererZones);
+
+      chargerClassement(); // Charge initialement, mais reste caché
+    };
+  </script>
+</body>
+</html>
