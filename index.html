@@ -223,13 +223,7 @@ scoresList.innerHTML += `
         })
         .catch(err => errorMessage.textContent = "Erreur de chargement du classement : " + err);
     }
-
-    setupZones();
-    showWord();
-    loadLeaderboard();
-  </script>
-  
-  function exportCSV() {
+    function exportCSV() {
   db.collection("scores")
     .orderBy("temps")
     .get()
@@ -245,7 +239,6 @@ scoresList.innerHTML += `
         csv += ligne.join(",") + "\n";
       });
 
-      // Création d'un lien de téléchargement
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -257,6 +250,12 @@ scoresList.innerHTML += `
     })
     .catch(err => alert("Erreur export CSV : " + err));
 }
+
+
+    setupZones();
+    showWord();
+    loadLeaderboard();
+  </script>
 
 </body>
 </html>
